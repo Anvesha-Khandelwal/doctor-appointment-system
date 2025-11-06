@@ -30,3 +30,22 @@ button {
 button:hover {
     background-color: #45a049;
 }
+.slot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 10px 20px;
+    margin: 10px auto;
+    width: 300px;
+    border-radius: 8px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+}
+
+.slot.booked {
+    background-color: #f8d7da;
+}
+
+.slot.available {
+    background-color: #d4edda;
+}

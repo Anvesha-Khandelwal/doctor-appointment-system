@@ -1,129 +1,127 @@
-// Temporary dummy data until backend is ready
-// ----------------------
-// Dummy doctors data
-// ----------------------
-const dummyDoctors = {
-    "Cardiologist": [
-        { id: 1, name: "Dr. Rakesh Sharma", experience: "12 years", hospital: "Apollo Hospital" },
-        { id: 2, name: "Dr. Meera Nair", experience: "8 years", hospital: "Fortis Hospital" }
-    ],
-    "Dermatologist": [
-        { id: 3, name: "Dr. Ananya Patel", experience: "5 years", hospital: "SkinCare Clinic" },
-        { id: 4, name: "Dr. Karan Singh", experience: "10 years", hospital: "Glow Hospital" }
-    ],
-    "Orthopedic": [
-        { id: 5, name: "Dr. Ritu Malhotra", experience: "7 years", hospital: "OrthoCare Centre" },
-        { id: 6, name: "Dr. Arvind Gupta", experience: "15 years", hospital: "AIIMS Delhi" }
-    ]
+const doctorsDB = {
+  Cardiologist: [
+    { id: "c1", name: "Dr. Rajesh Kumar", exp: "15 years", fee: 600, img: "images/doctor1.jpg" },
+    { id: "c2", name: "Dr. Sneha Reddy", exp: "10 years", fee: 550, img: "images/doctor2.jpg" },
+  ],
+  Dermatologist: [
+    { id: "d1", name: "Dr. Aisha Malik", exp: "8 years", fee: 400, img: "images/doctor3.jpg" },
+    { id: "d2", name: "Dr. Nikhil Jain", exp: "12 years", fee: 450, img: "images/doctor1.jpg" },
+  ],
+  Orthopedic: [
+    { id: "o1", name: "Dr. Meera Narayan", exp: "9 years", fee: 500, img: "images/doctor2.jpg" },
+    { id: "o2", name: "Dr. Arjun Patel", exp: "11 years", fee: 650, img: "images/doctor3.jpg" },
+  ],
 };
 
-// ----------------------
-// 1️⃣ For index.html
-// ----------------------
-function searchDoctors() {
-    const specialization = document.getElementById('specialization').value;
-    if (!specialization) {
-        alert('Please select a specialization');
-        return;
-    }
+const defaultSlots = ["09:00 AM", "09:30 AM", "10:00 AM", "11:00 AM", "02:00 PM", "03:30 PM"];
+const STORAGE_KEY = "appointments_v3";
+let bookings = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
 
-    // Go to doctors page with specialization
-    window.location.href = `doctors.html?specialization=${encodeURIComponent(specialization)}`;
+function renderDoctors(spec) {
+  const container = document.getElementById("doctors-list");
+  container.innerHTML = "";
+
+  if (!spec) {
+    container.innerHTML = `<p>Please select a specialization.</p>`;
+    return;
+  }
+
+  doctorsDB[spec].forEach((doc) => {
+    const card = document.createElement("div");
+    card.className = "doctor-card";
+    card.innerHTML = `
+      <img src="${doc.img}" alt="${doc.name}">
+      <h3>${doc.name}</h3>
+      <p>${spec} • ${doc.exp}</p>
+      <p><strong>Fee:</strong> ₹${doc.fee}</p>
+      <button onclick="openModal('${doc.id}', '${spec}')">Book Appointment</button>
+    `;
+    container.appendChild(card);
+  });
 }
 
-// ----------------------
-// 2️⃣ For doctors.html
-// ----------------------
-function loadDoctors() {
-    const params = new URLSearchParams(window.location.search);
-    const specialization = params.get("specialization");
-    if (!specialization) return;
+document.getElementById("findBtn").addEventListener("click", () => {
+  const spec = document.getElementById("specialization").value;
+  renderDoctors(spec);
+});
 
-    const doctorListDiv = document.getElementById("doctor-list");
-    const doctors = dummyDoctors[specialization] || [];
+const modal = document.getElementById("booking-modal");
+const closeBtn = document.getElementById("modal-close");
+const confirmBtn = document.getElementById("confirm-book");
 
-    if (doctors.length === 0) {
-        doctorListDiv.innerHTML = `<p>No doctors found for ${specialization}</p>`;
+let currentDoctor = null;
+let selectedSlot = null;
+
+function openModal(id, spec) {
+  const doctor = findDoctor(id);
+  currentDoctor = { ...doctor, spec };
+  selectedSlot = null;
+
+  document.getElementById("modal-doctor-img").src = doctor.img;
+  document.getElementById("modal-doctor-name").textContent = doctor.name;
+  document.getElementById("modal-doctor-spec").textContent = `${spec} • ${doctor.exp}`;
+  document.getElementById("modal-fee").textContent = doctor.fee;
+
+  const slotsContainer = document.getElementById("modal-slots");
+  slotsContainer.innerHTML = "";
+
+  defaultSlots.forEach((s) => {
+    const el = document.createElement("div");
+    el.textContent = s;
+    el.className = "modal-slot";
+    if (isBooked(id, s)) el.classList.add("booked");
+
+    el.addEventListener("click", () => {
+      if (el.classList.contains("booked")) {
+        cancelSlot(id, s);
         return;
-    }
-
-    doctorListDiv.innerHTML = `<h3>${specialization} Specialists:</h3>`;
-    doctors.forEach(doc => {
-        doctorListDiv.innerHTML += `
-            <div class="doctor-card">
-                <h4>${doc.name}</h4>
-                <p>${doc.experience}</p>
-                <p>${doc.hospital}</p>
-                <button onclick="bookDoctor(${doc.id}, '${doc.name}')">Book Appointment</button>
-            </div>
-        `;
+      }
+      document.querySelectorAll(".modal-slot").forEach((x) => x.classList.remove("selected"));
+      el.classList.add("selected");
+      selectedSlot = s;
+      confirmBtn.disabled = false;
     });
+    slotsContainer.appendChild(el);
+  });
+
+  confirmBtn.disabled = true;
+  modal.classList.remove("hidden");
 }
 
-// This runs when you click “Book Appointment”
-function bookDoctor(id, name) {
-    // Go to appointment page with doctor details
-    window.location.href = `appointment.html?doctorId=${id}&doctorName=${encodeURIComponent(name)}`;
+function closeModal() {
+  modal.classList.add("hidden");
 }
 
-// ----------------------
-// 3️⃣ For appointment.html (slot display)
-// ----------------------
-function generateSlots() {
-    const params = new URLSearchParams(window.location.search);
-    const doctorName = params.get("doctorName") || "Selected Doctor";
-
-    document.querySelector("h2").innerText = `Available Slots for ${doctorName}`;
-    const slotsDiv = document.getElementById("slots");
-    slotsDiv.innerHTML = "";
-
-    let start = 10; // 10 AM
-    const bookedSlots = ["11:00 AM - 11:30 AM", "2:00 PM - 2:30 PM", "4:30 PM - 5:00 PM"]; // dummy booked
-
-    while (start < 18) { // till 6 PM
-        let end = start + 0.5;
-        let slot = `${formatTime(start)} - ${formatTime(end)}`;
-        const isBooked = bookedSlots.includes(slot);
-
-        slotsDiv.innerHTML += `
-            <div class="slot ${isBooked ? 'booked' : 'available'}">
-                <p>${slot}</p>
-                ${isBooked
-                    ? '<button disabled>Booked</button>'
-                    : `<button onclick="confirmSlot('${slot}')">Book</button>`}
-            </div>
-        `;
-        start += 0.5;
-    }
+function findDoctor(id) {
+  for (let spec in doctorsDB) {
+    const doc = doctorsDB[spec].find((d) => d.id === id);
+    if (doc) return doc;
+  }
 }
 
-function formatTime(time) {
-    const hour = Math.floor(time);
-    const minute = (time % 1) ? "30" : "00";
-    const suffix = hour >= 12 ? "PM" : "AM";
-    const adjusted = hour > 12 ? hour - 12 : hour;
-    return `${adjusted}:${minute} ${suffix}`;
+function isBooked(id, slot) {
+  return bookings[id]?.includes(slot);
 }
 
-function confirmSlot(slot) {
-    alert(`Slot ${slot} booked successfully (dummy only for now).`);
+confirmBtn.addEventListener("click", () => {
+  if (!selectedSlot) return;
+  const id = currentDoctor.id;
+  if (!bookings[id]) bookings[id] = [];
+  if (!bookings[id].includes(selectedSlot)) bookings[id].push(selectedSlot);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+  alert(`✅ Appointment booked with ${currentDoctor.name} at ${selectedSlot}`);
+  closeModal();
+});
+
+function cancelSlot(id, slot) {
+  if (confirm(`Cancel appointment at ${slot}?`)) {
+    bookings[id] = bookings[id].filter((s) => s !== slot);
+    if (bookings[id].length === 0) delete bookings[id];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+    alert("❌ Appointment cancelled successfully.");
+    openModal(id, currentDoctor.spec);
+  }
 }
 
-// ----------------------
-// 4️⃣ For cancel.html
-// ----------------------
-function cancelAppointment(event) {
-    event.preventDefault();
-    const id = document.getElementById('appointmentId').value;
-    document.getElementById('cancelMsg').innerText =
-        `Appointment ${id} cancelled successfully (mock for now).`;
-}
-
-// ----------------------
-// Auto-load for pages
-// ----------------------
-if (window.location.pathname.endsWith("doctors.html")) {
-    window.onload = loadDoctors;
-} else if (window.location.pathname.endsWith("appointment.html")) {
-    window.onload = generateSlots;
-}
+closeBtn.addEventListener("click", closeModal);
+modal.addEventListener("click", (e) => e.target === modal && closeModal());
